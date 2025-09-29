@@ -36,7 +36,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./Dockerfile
+          file: Dockerfile
           platforms: linux/amd64
           push: true
           tags: |
@@ -49,7 +49,7 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          port: 22
+          port: ${{ secrets.VPS_PORT }}
           script: |
             # Set variables
             IMAGE_NAME="${{ secrets.DOCKER_USERNAME }}/my-node-app"
@@ -70,21 +70,45 @@ jobs:
               --name $CONTAINER_NAME \
               --restart unless-stopped \
               -p 5003:5003 \
-              --health-cmd="curl -f http://localhost:5003/health || exit 1" \
-              --health-interval=30s \
-              --health-timeout=10s \
-              --health-retries=3 \
+              -e NODE_ENV=production \
+              --log-driver=json-file \
+              --log-opt max-size=10m \
+              --log-opt max-file=3 \
               "$IMAGE_NAME:latest"
             
             echo "✅ Deployment complete!"
             
-            # Verify deployment
-            sleep 10
+            # Verify deployment with timeout
+            echo "🔍 Verifying deployment..."
+            sleep 15
+            
             if docker ps | grep -q $CONTAINER_NAME; then
               echo "✅ Container is running successfully!"
-              docker logs $CONTAINER_NAME --tail 20
+              echo "📊 Container status:"
+              docker ps | grep $CONTAINER_NAME
+              echo "📝 Recent logs:"
+              docker logs $CONTAINER_NAME --tail 10
+              
+              # Test app response
+              echo "🌐 Testing application response..."
+              if timeout 30s bash -c 'until curl -f http://localhost:5003 &>/dev/null; do sleep 2; done'; then
+                echo "✅ Application is responding successfully!"
+              else
+                echo "⚠️  Application may still be starting up"
+              fi
             else
-              echo "❌ Container failed to start"
-              docker logs $CONTAINER_NAME
+              echo "❌ Container failed to start!"
+              echo "📝 Container logs:"
+              docker logs $CONTAINER_NAME --tail 50
+              echo "🔍 Docker system info:"
+              docker system df
               exit 1
             fi
+            
+            # Show final status
+            echo "🎉 Deployment Summary:"
+            echo "- Container: $CONTAINER_NAME"
+            echo "- Image: $IMAGE_NAME:latest"
+            echo "- Port: 5003"
+            echo "- Status: $(docker inspect --format='{{.State.Status}}' $CONTAINER_NAME)"
+            echo "- URL: http://82.112.231.34:5003"
