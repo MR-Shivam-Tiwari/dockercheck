@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch:  # Manual trigger option
+  workflow_dispatch: # Manual trigger option
 
 permissions:
   contents: read
@@ -20,8 +20,8 @@ jobs:
       - name: ⚙️ Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
 
       - name: 📦 Install dependencies
         run: npm ci
@@ -32,18 +32,16 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: 🐳 Build Docker image
-        run: |
-          IMAGE_NAME="${{ secrets.DOCKER_USERNAME }}/my-node-app"
-          TAG="${GITHUB_SHA}"
-          docker build -t "$IMAGE_NAME:latest" -t "$IMAGE_NAME:$TAG" .
-
-      - name: 🚀 Push image to Docker Hub
-        run: |
-          IMAGE_NAME="${{ secrets.DOCKER_USERNAME }}/my-node-app"
-          TAG="${GITHUB_SHA}"
-          docker push "$IMAGE_NAME:latest"
-          docker push "$IMAGE_NAME:$TAG"
+      - name: 🐳 Build and Push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/my-node-app:latest
+            ${{ secrets.DOCKER_USERNAME }}/my-node-app:${{ github.sha }}
 
       - name: 🌍 Deploy to Hostinger VPS
         uses: appleboy/ssh-action@v1.0.3
@@ -90,5 +88,3 @@ jobs:
               docker logs $CONTAINER_NAME
               exit 1
             fi
-
-
