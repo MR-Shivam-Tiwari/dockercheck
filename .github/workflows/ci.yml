@@ -1,29 +1,56 @@
-name: Node.js CI
+name: CI/CD Pipeline - Hostinger VPS
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+    branches:
+      - main
+
+permissions:
+  contents: read
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: 🧠 Checkout Code
         uses: actions/checkout@v3
 
-      - name: Set up Node.js
+      - name: ⚙️ Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '18'
+          node-version: 20
 
-      - name: Install dependencies
+      - name: 📦 Install dependencies
         run: npm install
 
-      - name: Run tests
-        run: npm test
+      - name: 🔐 Login to Docker Hub
+        run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
 
-      - name: Start server
-        run: node server.js
+      - name: 🐳 Build Docker image
+        run: docker build -t "${{ secrets.DOCKER_USERNAME }}/my-node-app:latest" .
+
+      - name: 🚀 Push image to Docker Hub
+        run: docker push "${{ secrets.DOCKER_USERNAME }}/my-node-app:latest"
+
+      - name: 🌍 Deploy to Hostinger VPS
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: "${{ secrets.VPS_HOST }}"
+          username: "${{ secrets.VPS_USER }}"
+          key: "${{ secrets.VPS_SSH_KEY }}"
+          script: |
+            echo "Pulling latest image..."
+            docker pull "${{ secrets.DOCKER_USERNAME }}/my-node-app:latest"
+
+            echo "Stopping existing container..."
+            docker stop myapp || true
+            docker rm myapp || true
+
+            echo "Cleaning up old images..."
+            docker image prune -af || true
+
+            echo "Starting new container..."
+            docker run -d --name myapp --restart always -p 5003:5003 "${{ secrets.DOCKER_USERNAME }}/my-node-app:latest"
+
+            echo "✅ Deployment complete!"
