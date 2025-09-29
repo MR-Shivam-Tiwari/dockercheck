@@ -23,6 +23,8 @@ let users = [
     { id: 14, name: 'Vikram', email: 'vikram@example.com' },
     { id: 15, name: 'Pooja', email: 'pooja@example.com' },
     { id: 16, name: 'Aditya', email: 'aditya@example.com' },
+    { id: 16, name: 'Aditya', email: 'aditya@example.com' },
+    { id: 16, name: 'Aditya', email: 'aditya@example.com' },
     { id: 17, name: 'Rohan', email: 'rohan@example.com' },
     { id: 18, name: 'Isha', email: 'isha@example.com' },
     { id: 19, name: 'Nikhil', email: 'nikhil@example.com' },
