@@ -407,6 +407,10 @@ app.put('/users/:id', (req, res) => {
     res.json(user);
 });
 
+
+
+
+
 // Delete user
 app.delete('/users/:id', (req, res) => {
     const index = users.findIndex(u => u.id === parseInt(req.params.id));
